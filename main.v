@@ -21,26 +21,71 @@ type Elem = string | Scope
 
 struct Scope {
 	name_id string // fn parse(file string) []Elem
+mut:
 	children []Elem // code blocks & children scopes
 }
 
-fn parse(file string) []Elem {
-	tree := []Elem{}
+fn parse(file string) Scope {
+	mut tree := Scope{name_id: "BODY"}
+	mut stack := []&Elem{} // add the last parent to the stack, to use .children.last()	
+	stack << tree
+	mut top := &(stack[0] as Scope)
+	mut top_code := &(top.children[top.children.len-1] as string)
+	top.children << ""
+	mut scope_level := 0
+	mut i := 0 // index in the file
 	for i < file.len {
+		top = &(stack[stack.len-1] as scope)
+		top_code = &(top.children[top.children.len-1] as string)
 		if file[i] == `/` && file[i+1] == `/` {
 			for file[i] != `\n` { // comment -> skip until newline
+				top_code += file[i].ascii_str()
 				i++
 			}
-		} else if multiline {
-		} else if string ' " 
-		} else if {} // update {} counter
-		} else if fnc decla
-		else {
-			add to the actual codeblock
+		} else if file[i] == `/` && file[i+1] == `*` {
+			top_code += file[i].ascii_str() // /
+			i++
+			top_code += file[i].ascii_str() // *
+			i++
+			for file[i] != `*` { // multiline comment -> skip next */
+				top_code += file[i].ascii_str()
+				i++
+				if file[i] == `/` { // end of multiline
+					top_code += file[i].ascii_str()
+					break
+				}
+			}
+		} else if file[i] == `\`` && file[i-1] != `\\`{ 
+			top_code += file[i].ascii_str()
+			i++ // should not skip important stuff, even better if vfmt before
+			top_code += file[i].ascii_str()
+			i++
+			top_code += file[i].ascii_str()
+		} else if file[i] == `'` {
+			top_code += file[i].ascii_str()
+			i++
+			for file[i] != `'` && file[i-1] != `\\` { // string -> skip until next '
+				top_code += file[i].ascii_str()
+				i++
+			}
+		} else if file[i] == `"` {
+			top_code += file[i].ascii_str()
+			i++
+			for file[i] != `"` && file[i-1] != `\\` { // string -> skip until next "
+				top_code += file[i].ascii_str()
+				i++
+			}
+		} else if file[i] == `{` { // update { counter
+			scope_level += 1
+		//} else if fnc decla
+		} else {
+			//add to the actual codeblock
 		}
 		i++
 	}
+	return tree
 }
+
 
 fn main() {
 	file := os.read_file("../notOnlyNots/main.v")!
@@ -54,6 +99,5 @@ fn main() {
 
 
 
-
-	os.rm(folder) or {panic(err)}
+	os.rmdir_all(folder) or {panic(err)}
 }
