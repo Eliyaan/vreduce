@@ -22,81 +22,107 @@ type Elem = string | Scope
 struct Scope {
 	name_id string // fn parse(file string) []Elem
 mut:
-	children []Elem // code blocks & children scopes
+	children []Elem // code blocks & children scope
 }
 
-fn parse(file string) Scope {
+fn parse(file string) Scope { // The parser is surely incomplete for the V syntax, but should work for most of the cases, if not, please open an issue
 	mut tree := Scope{name_id: "BODY"}
 	mut stack := []&Elem{} // add the last parent to the stack, to use .children.last()	
 	stack << tree
 	mut top := &(stack[0] as Scope)
-	mut top_code := &(top.children[top.children.len-1] as string)
 	top.children << ""
+	mut top_code := &(top.children[top.children.len-1] as string)
 	mut scope_level := 0
 	mut i := 0 // index in the file
 	for i < file.len {
-		top = &(stack[stack.len-1] as scope)
+		top = &(stack[stack.len-1] as Scope)
 		top_code = &(top.children[top.children.len-1] as string)
 		if file[i] == `/` && file[i+1] == `/` {
 			for file[i] != `\n` { // comment -> skip until newline
-				top_code += file[i].ascii_str()
+				unsafe{ *top_code += file[i].ascii_str()}
 				i++
 			}
 		} else if file[i] == `/` && file[i+1] == `*` {
-			top_code += file[i].ascii_str() // /
+			unsafe{ *top_code += file[i].ascii_str()} // /
 			i++
-			top_code += file[i].ascii_str() // *
+			unsafe{ *top_code += file[i].ascii_str()} // *
+			i++	
+			unsafe{ *top_code += file[i].ascii_str()} // maybe *
 			i++
-			for file[i] != `*` { // multiline comment -> skip next */
-				top_code += file[i].ascii_str()
+			for file[i-1] != `*` && file[i] != `/` { // multiline comment -> skip next */
+				unsafe{*top_code += file[i].ascii_str()}
 				i++
-				if file[i] == `/` { // end of multiline
-					top_code += file[i].ascii_str()
-					break
-				}
 			}
-		} else if file[i] == `\`` && file[i-1] != `\\`{ 
-			top_code += file[i].ascii_str()
-			i++ // should not skip important stuff, even better if vfmt before
-			top_code += file[i].ascii_str()
+			unsafe{ *top_code += file[i].ascii_str()} // /
 			i++
-			top_code += file[i].ascii_str()
+		} else if file[i] == `\`` && file[i-1] != `\\`{ 
+			unsafe{ *top_code += file[i].ascii_str()}
+			i++ // should not skip important stuff, even better if vfmt before
+			unsafe{ *top_code += file[i].ascii_str()}
+			i++
+			unsafe{ *top_code += file[i].ascii_str()}
+			i++
 		} else if file[i] == `'` {
-			top_code += file[i].ascii_str()
+			unsafe{ *top_code += file[i].ascii_str()} // '
 			i++
 			for file[i] != `'` && file[i-1] != `\\` { // string -> skip until next '
-				top_code += file[i].ascii_str()
+				unsafe{ *top_code += file[i].ascii_str()}
 				i++
 			}
+			unsafe{ *top_code += file[i].ascii_str()} // '
+			i++
 		} else if file[i] == `"` {
-			top_code += file[i].ascii_str()
+			unsafe{ *top_code += file[i].ascii_str()} // "
 			i++
 			for file[i] != `"` && file[i-1] != `\\` { // string -> skip until next "
-				top_code += file[i].ascii_str()
+				unsafe{ *top_code += file[i].ascii_str()}
 				i++
 			}
+			unsafe{ *top_code += file[i].ascii_str()} // "
+			i++
 		} else if file[i] == `{` { // update { counter
+			unsafe{ *top_code += file[i].ascii_str()}
+			i++
 			scope_level += 1
-		//} else if fnc decla
+		} else if file[i] == `}` {
+			unsafe{ *top_code += file[i].ascii_str()}
+			i++
+			scope_level -= 1
+			if scope_level == 0 && stack.len > 1{ // for the moment there are only fns
+				stack.pop()	
+				top = &(stack[stack.len-1] as Scope)
+				top.children << ""
+			}
+		} else if file[i] == `f` && file[i+1] == `n` && file[i+2] == ` ` && file[i-1] == `\n` {
+			fn_start := i
+			for file[i+1] != `{` {
+				i++
+			}
+			signature := file[fn_start .. i]
+			top.children << Scope{signature, [Elem(signature)]}	
+			stack << &(top.children[top.children.len-1]) // the fn scope
 		} else {
-			//add to the actual codeblock
+			unsafe{ *top_code += file[i].ascii_str()}
+			i++
 		}
-		i++
+		// nothing here to avoid complexity, no need to predict what happened before, everything will be handled properly
 	}
+	assert stack.len == 1, 'The stack should only have the BODY scope'
+	assert scope_level == 0, 'The scopes are not well detected'
 	return tree
 }
 
 
 fn main() {
 	file := os.read_file("../notOnlyNots/main.v")!
-	// parse the file to extract the scopes  !!! comments //, multilines /*, strings " ', not scope {}
+	// parse the file to extract the scopes  
 	// reduce the code first fns, then first, second... level scopes then code blocks & lines
 
 
 
 
 	string_reproduces(file, "C error found", "v -no-skip-unused ")
-
+	tree := parse(file)	
 
 
 	os.rmdir_all(folder) or {panic(err)}
