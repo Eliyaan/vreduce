@@ -60,7 +60,7 @@ fn parse(file string) Scope { // The parser is surely incomplete for the V synta
 		} else if file[i] == `\`` && file[i - 1] != `\\` {
 			current_string += file[i].ascii_str()
 			i++
-			for file[i] != `\`` && file[i - 1] != `\\` { // string -> skip until next `
+			for file[i] != `\`` || (file[i - 1] == `\\` && file[i - 2] != `\\`) { // string -> skip until next `
 				current_string += file[i].ascii_str()
 				i++
 			}
@@ -69,7 +69,7 @@ fn parse(file string) Scope { // The parser is surely incomplete for the V synta
 		} else if file[i] == `'` {
 			current_string += file[i].ascii_str() // '
 			i++
-			for file[i] != `'` && file[i - 1] != `\\` { // string -> skip until next '
+			for file[i] != `'` || (file[i - 1] == `\\` && file[i - 2] != `\\`) { // string -> skip until next '
 				current_string += file[i].ascii_str()
 				i++
 			}
@@ -78,7 +78,7 @@ fn parse(file string) Scope { // The parser is surely incomplete for the V synta
 		} else if file[i] == `"` {
 			current_string += file[i].ascii_str() // "
 			i++
-			for file[i] != `"` && file[i - 1] != `\\` { // string -> skip until next "
+			for file[i] != `"` || (file[i - 1] == `\\` && file[i - 2] != `\\`){ // string -> skip until next "
 				current_string += file[i].ascii_str()
 				i++
 			}
@@ -88,20 +88,10 @@ fn parse(file string) Scope { // The parser is surely incomplete for the V synta
 			current_string += file[i].ascii_str()
 			i++
 			scope_level += 1
-			println("new scope: ${scope_level}")
-			println(stack[0].children.last())
-			println('\n')
-			println(current_string)
-			println('\n')
 		} else if file[i] == `}` {
 			current_string += file[i].ascii_str()
 			i++
 			scope_level -= 1
-			println("out of scope: ${scope_level}")
-			println(stack[0].children.last())
-			println('\n')
-			println(current_string)
-			println('\n')
 			assert scope_level >= 0, 'The scopes are not well detected ${stack[0]}'
 			if scope_level == 0 && stack.len > 1 { // for the moment there are only fns
 				top.children << current_string
