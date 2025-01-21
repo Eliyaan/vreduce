@@ -43,21 +43,21 @@ fn parse(file string) Scope { // The parser is surely incomplete for the V synta
 		top = stack[stack.len - 1]
 		if file[i] == `/` && file[i + 1] == `/` {
 			for file[i] != `\n` { // comment -> skip until newline
-				current_string += file[i].ascii_str()
+				//current_string += file[i].ascii_str()
 				i++
 			}
 		} else if file[i] == `/` && file[i + 1] == `*` {
-			current_string += file[i].ascii_str() // /
+			//current_string += file[i].ascii_str() // /
 			i++
-			current_string += file[i].ascii_str() // *
+			//current_string += file[i].ascii_str() // *
 			i++
-			current_string += file[i].ascii_str() // maybe *
+			//current_string += file[i].ascii_str() // maybe *
 			i++
 			for !(file[i - 1] == `*` && file[i] == `/`) { // multiline comment -> skip next multiline end sequence
-				current_string += file[i].ascii_str()
+				//current_string += file[i].ascii_str()
 				i++
 			}
-			current_string += file[i].ascii_str() // /
+			//current_string += file[i].ascii_str() // /
 			i++
 		} else if file[i] == `\`` && file[i - 1] != `\\` {
 			current_string += file[i].ascii_str()
