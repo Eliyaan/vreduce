@@ -4,17 +4,19 @@ const folder = '.tmp_v_reduce'
 const reduced_code_file_name = '__v_reduced_code.v'
 const path = '${folder}/${reduced_code_file_name}'
 
-fn string_reproduces(file string, pattern string, command string) {
+fn string_reproduces(file string, pattern string, command string) bool {
 	if !os.exists(folder) {
 		os.mkdir(folder) or { panic(err) }
 	}
 	os.write_file(path, file) or { panic(err) }
 	res := os.execute(command + path)
 	if res.output.contains(pattern) {
-		println('reproduces')
+		//println('reproduces')
+		return true
 	} else {
-		println('does not reproduce')
-//		println(res.output)
+		//println('does not reproduce')
+		//println(res.output)
+		return false
 	}
 }
 
@@ -92,26 +94,26 @@ fn parse(file string) Scope { // The parser is surely incomplete for the V synta
 			current_string = ''
 			top.children << &Scope{}
 			stack << &(top.children[top.children.len - 1] as Scope)
-	/*
-	println("\n####new scope: ${scope_level}")
-	if stack[0].children.len > 0 {
-		println(stack[0].children.last())
-	}
-	println('\n\n')
-	println(current_string)
-	println('\n\n')
-	*/
+							/*
+							println("\n####new scope: ${scope_level}")
+							if stack[0].children.len > 0 {
+								println(stack[0].children.last())
+							}
+							println('\n\n')
+							println(current_string)
+							println('\n\n')
+							*/
 		} else if file[i] == `}` {
 			scope_level -= 1
-	/*
-	println("\n####get out of the scope: ${scope_level}")
-	if stack[0].children.len > 0 {
-		println(stack[0].children.last())
-	}
-	println('\n\nCurrent string:')
-	println(current_string)
-	println('\n\n')
-	*/
+							/*
+							println("\n####get out of the scope: ${scope_level}")
+							if stack[0].children.len > 0 {
+								println(stack[0].children.last())
+							}
+							println('\n\nCurrent string:')
+							println(current_string)
+							println('\n\n')
+							*/
 			assert scope_level >= 0, 'The scopes are not well detected ${stack[0]}'
 			top.children << current_string
 			stack.pop()
@@ -141,6 +143,7 @@ fn create_code(sc Scope) string {
 		if item is Scope {
 			if !item.ignored && !item.tmp_ignored {
 				stack << item.children.reverse() // to traverse the tree in the good order
+			} else {
 			}
 		} else if item is string { // string
 			output_code += item
@@ -152,16 +155,33 @@ fn create_code(sc Scope) string {
 }
 
 fn reduce_scope(mut sc Scope) {
-	mut modified_smth := true // was a modification successful in reducing the code in the last iterration
+	mut modified_smth := true // was a modification successful in reducing the code in the last iteration
 	for modified_smth {
 		modified_smth = false
+		println("NEXT ITERATION")
 		mut stack := []&Elem{}
-		stack << &sc
+		for i := sc.children.len-1; i > 0; i-- {
+			stack << &sc.children[i]
+		}
 		for stack.len > 0 {
 			mut item := stack.pop() 
-			if item is Scope {
-				if !item.igno
+			if mut item is Scope {
+				if !item.ignored {
+					item.tmp_ignored = true
+					code := create_code(sc)
+					item.tmp_ignored = false // dont need it
+					if string_reproduces(code, 'C error found', 'v -no-skip-unused ') {
+						item.ignored = true
+						modified_smth = true
+						println("Code size: ${code.len}")
+					} else { // if can remove it, can remove it's children 
+						for i := item.children.len-1; i > 0; i-- {
+							stack << &item.children[i]
+						}
+					}
+				}
 			} 
+			/*
 			if !ignored
 				-> tmp_ignore
 			create the file
@@ -169,24 +189,31 @@ fn reduce_scope(mut sc Scope) {
 				ignored & modified_smth = true & print file size / original size
 				not ignored
 				tmp_ignore -> false
-			
+			*/
 		}
-		
 	}
+	mre := create_code(sc)
+	assert string_reproduces(mre, 'C error found', 'v -no-skip-unused')
+	os.write_file('rpdc.v', mre) or {panic(err)}
 }
 
 fn main() {
 	file := os.read_file("../notOnlyNots/main.v")!
-//	file := os.read_file('main.v')!
+	println("Original code size: ${file.len}")
+	assert !string_reproduces(os.read_file('main.v')!, 'C error found', 'v -no-skip-unused')
 	// parse the file to extract the scopes
 	// reduce the code first fns, then first, second... level scopes then code blocks & lines
 
-	string_reproduces(file, 'C error found', 'v -no-skip-unused ')
-	tree := parse(file)
-//	println(tree)
+	// startup tests
+	assert string_reproduces(file, 'C error found', 'v -no-skip-unused ')
+	mut tree := parse(file)
 	code := create_code(tree)
-	string_reproduces(code, 'C error found', 'v -no-skip-unused ')
-	assert code == file
-	
+	assert string_reproduces(code, 'C error found', 'v -no-skip-unused ')
+	println("Code size without comments: ${code.len}")
+
+	// reduce
+	reduce_scope(mut tree)
+
+	// clean up
 	os.rmdir_all(folder) or { panic(err) }
 }
