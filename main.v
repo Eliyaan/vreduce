@@ -20,8 +20,9 @@ fn string_reproduces(file string, pattern string, command string) {
 
 @[heap]
 struct Scope {
-	name_id string // fn parse(file string) []Elem
 mut:
+	ignored bool // is ignored when creating the file
+	tmp_ignored bool // testing if it can be ignored in the file
 	children []Elem // code blocks & children scope
 }
 
@@ -31,9 +32,7 @@ type Elem = string | Scope
 
 fn parse(file string) Scope { // The parser is surely incomplete for the V syntax, but should work for most of the cases, if not, please open an issue
 	mut stack := []&Scope{} // add the last parent to the stack
-	stack << &Scope{
-		name_id: '' // parent
-	}
+	stack << &Scope{}	
 	mut top := stack[0]
 	mut scope_level := 0 // if we are in a scope (like a function)
 	mut i := 0 // index of the current char in the file
@@ -88,46 +87,38 @@ fn parse(file string) Scope { // The parser is surely incomplete for the V synta
 		} else if file[i] == `{` { // update { counter
 			current_string += file[i].ascii_str()
 			i++
-			scope_level += 1
-			/*
-			println("\n####new scope: ${scope_level}")
-			if stack[0].children.len > 0 {
-				println(stack[0].children.last())
-			}
-			println('\n\n')
-			println(current_string)
-			println('\n\n')
-			*/
-		} else if file[i] == `}` {
-			current_string += file[i].ascii_str()
-			i++
-			scope_level -= 1
-			/*
-			println("\n####get out of the scope: ${scope_level}")
-			if stack[0].children.len > 0 {
-				println(stack[0].children.last())
-			}
-			println('\n\nCurrent string:')
-			println(current_string)
-			println('\n\n')
-			*/
-			assert scope_level >= 0, 'The scopes are not well detected ${stack[0]}'
-			if scope_level == 0 && stack.len > 1 { // for the moment there are only fns
-				top.children << current_string
-				stack.pop()
-				top = stack[stack.len - 1]
-				current_string = ''
-			}
-		} else if file[i] == `f` && file[i + 1] == `n` && file[i + 2] == ` ` && file[i - 1] == `\n` {
-			fn_start := i
-			for file[i + 1] != `{` {
-				i++
-			}
 			top.children << current_string
+			scope_level += 1
 			current_string = ''
-			signature := file[fn_start..i]
-			top.children << &Scope{signature, [Elem(signature)]}
-			stack << &(top.children[top.children.len - 1] as Scope) // the fn scope
+			top.children << &Scope{}
+			stack << &(top.children[top.children.len - 1] as Scope)
+	/*
+	println("\n####new scope: ${scope_level}")
+	if stack[0].children.len > 0 {
+		println(stack[0].children.last())
+	}
+	println('\n\n')
+	println(current_string)
+	println('\n\n')
+	*/
+		} else if file[i] == `}` {
+			scope_level -= 1
+	/*
+	println("\n####get out of the scope: ${scope_level}")
+	if stack[0].children.len > 0 {
+		println(stack[0].children.last())
+	}
+	println('\n\nCurrent string:')
+	println(current_string)
+	println('\n\n')
+	*/
+			assert scope_level >= 0, 'The scopes are not well detected ${stack[0]}'
+			top.children << current_string
+			stack.pop()
+			top = stack[stack.len - 1]
+			current_string = ''
+			current_string += file[i].ascii_str() // }
+			i++
 		} else {
 			current_string += file[i].ascii_str()
 			i++
@@ -148,7 +139,9 @@ fn create_code(sc Scope) string {
 	for stack.len > 0 {
 		item := stack.pop() 
 		if item is Scope {
-			stack << item.children.reverse() // to traverse the tree in the good order
+			if !item.ignored && !item.tmp_ignored {
+				stack << item.children.reverse() // to traverse the tree in the good order
+			}
 		} else if item is string { // string
 			output_code += item
 		} else {
@@ -156,6 +149,30 @@ fn create_code(sc Scope) string {
 		}
 	}
 	return output_code
+}
+
+fn reduce_scope(mut sc Scope) {
+	mut modified_smth := true // was a modification successful in reducing the code in the last iterration
+	for modified_smth {
+		modified_smth = false
+		mut stack := []&Elem{}
+		stack << &sc
+		for stack.len > 0 {
+			mut item := stack.pop() 
+			if item is Scope {
+				if !item.igno
+			} 
+			if !ignored
+				-> tmp_ignore
+			create the file
+			test for reproduction :
+				ignored & modified_smth = true & print file size / original size
+				not ignored
+				tmp_ignore -> false
+			
+		}
+		
+	}
 }
 
 fn main() {
@@ -166,6 +183,7 @@ fn main() {
 
 	string_reproduces(file, 'C error found', 'v -no-skip-unused ')
 	tree := parse(file)
+//	println(tree)
 	code := create_code(tree)
 	string_reproduces(code, 'C error found', 'v -no-skip-unused ')
 	assert code == file
