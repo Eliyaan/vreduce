@@ -3,6 +3,8 @@ import os
 const folder = '.tmp_v_reduce'
 const reduced_code_file_name = '__v_reduced_code.v'
 const path = '${folder}/${reduced_code_file_name}'
+const command = 'v -no-skip-unused -w '
+const error_msg = 'C error found'
 
 fn string_reproduces(file string, pattern string, command string) bool {
 	if !os.exists(folder) {
@@ -170,7 +172,7 @@ fn reduce_scope(mut sc Scope) {
 					item.tmp_ignored = true
 					code := create_code(sc)
 					item.tmp_ignored = false // dont need it
-					if string_reproduces(code, 'C error found', 'v -no-skip-unused ') {
+					if string_reproduces(code, error_msg, command) {
 						item.ignored = true
 						modified_smth = true
 						println("Code size: ${code.len}")
@@ -193,22 +195,22 @@ fn reduce_scope(mut sc Scope) {
 		}
 	}
 	mre := create_code(sc)
-	assert string_reproduces(mre, 'C error found', 'v -no-skip-unused')
+	assert string_reproduces(mre, error_msg, command)
 	os.write_file('rpdc.v', mre) or {panic(err)}
 }
 
 fn main() {
 	file := os.read_file("../notOnlyNots/main.v")!
 	println("Original code size: ${file.len}")
-	assert !string_reproduces(os.read_file('main.v')!, 'C error found', 'v -no-skip-unused')
+	assert !string_reproduces(os.read_file('main.v')!, error_msg, command)
 	// parse the file to extract the scopes
 	// reduce the code first fns, then first, second... level scopes then code blocks & lines
 
 	// startup tests
-	assert string_reproduces(file, 'C error found', 'v -no-skip-unused ')
+	assert string_reproduces(file, error_msg, command)
 	mut tree := parse(file)
 	code := create_code(tree)
-	assert string_reproduces(code, 'C error found', 'v -no-skip-unused ')
+	assert string_reproduces(code, error_msg, command)
 	println("Code size without comments: ${code.len}")
 
 	// reduce
