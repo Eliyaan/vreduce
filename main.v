@@ -181,7 +181,7 @@ fn reduce_scope(mut sc Scope, error_msg string, command string) {
 					if string_reproduces(code, error_msg, command) {
 						item.ignored = true
 						modified_smth = true
-						println("Code size: ${code.len}")
+						println("Code size: ${code.len} chars")
 					} else { // if can remove it, no need to go though it's children 
 						for i in 0 .. item.children.len {
 							stack << &item.children[i]
@@ -242,7 +242,7 @@ fn reduce_scope(mut sc Scope, error_msg string, command string) {
 					if string_reproduces(code, error_msg, command) {
 						item.ignored = true
 						modified_smth = true
-						println("Code size: ${code.len}")
+						println("Code size: ${code.len} chars")
 					} else { // if can remove it, can remove it's children 
 						for i in 0 .. item.children.len {
 							stack << &item.children[i]
