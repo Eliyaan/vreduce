@@ -1,4 +1,5 @@
 import os
+import flag
 import math
 
 const default_command = 'v -no-skip-unused' // Command used to compile the program, using -no-skip-unused to ease the reducing
@@ -9,11 +10,30 @@ const tmp_reduced_code_file_name = '__v_reduced_code.v'
 const path = '${tmp_folder}/${tmp_reduced_code_file_name}'
 
 fn main() {
-	file_path := os.input('Enter the path to the file to reduce:')
-	input_error_msg := os.input('Enter the message to reproduce (empty for: ${default_error_msg}):')
-	error_msg := if input_error_msg == '' { default_error_msg } else { input_error_msg }
-	input_command := os.input('Enter the command used for reproduction (empty for: ${default_command}):')
-	command := if input_command == '' { default_command } else { input_command }
+	mut fp := flag.new_flag_parser(os.args)
+	fp.skip_executable()
+	
+	file_path := fp.string('file_path', `f`, '', 'the path of the file you want to reduce')
+	if file_path == '' {
+		eprintln('You need to specify a file to reduce (with the `-f` flag) (more information with `-h` or `--help`)')
+		exit(1)
+	}
+	error_msg := fp.string('error_msg', `e`, default_error_msg, 'the error message you want to reproduce, default: ${default_error_msg}')
+	command := fp.string('command', `c`, default_command, 'the command used to try to reproduce the error, default: ${default_command}')
+	_ := fp.finalize() or {
+		eprintln(err)
+		println(fp.usage())
+		return
+	}
+
+	println("Starting to reduce the file '${file_path}' with command '${command}' reproducing '${error_msg}'")
+	
+	do_fmt := '-fmt' in os.args
+	if do_fmt {
+		println('Will do v fmt to the output rpdc.v file')
+	} else {
+		println('Will not do v fmt to the output rpdc.v file (use the `-fmt` flag to enable it)')
+	}    
 	
 	// Opening the file
 	file := os.read_file(file_path)!
@@ -27,7 +47,7 @@ fn main() {
 	println("Code size without comments: ${tmp_code.len}")
 
 	// reduce the code
-	reduce_scope(mut tree, error_msg, command)
+	reduce_scope(mut tree, error_msg, command, do_fmt)
 
 	// clean up
 	os.rmdir_all(tmp_folder) or { panic(err) }
@@ -161,7 +181,7 @@ fn create_code(sc Scope) string {
 }
 
 // Reduces the code contained in the scope tree and writes the reduced code to `rpdc.v`
-fn reduce_scope(mut sc Scope, error_msg string, command string) {
+fn reduce_scope(mut sc Scope, error_msg string, command string, do_fmt bool) {
 	println("Cleaning the scopes")
 	mut modified_smth := true // was a modification successful in reducing the code in the last iteration
 	for modified_smth { // as long as there are successful modifications
@@ -256,6 +276,8 @@ fn reduce_scope(mut sc Scope, error_msg string, command string) {
 	mre := create_code(line_tree) // final minimal reproductible example
 	assert string_reproduces(mre, error_msg, command)
 	os.write_file('rpdc.v', mre) or {panic(err)}
-	os.execute('v fmt -w rpdc.v')
+	if do_fmt {
+		os.execute('v fmt -w rpdc.v')
+	}
 	println('The reduced code is now in rpdc.v')
 }
