@@ -256,5 +256,6 @@ fn reduce_scope(mut sc Scope, error_msg string, command string) {
 	mre := create_code(line_tree) // final minimal reproductible example
 	assert string_reproduces(mre, error_msg, command)
 	os.write_file('rpdc.v', mre) or {panic(err)}
+	os.execute('v fmt -w rpdc.v')
 	println('The reduced code is now in rpdc.v')
 }
