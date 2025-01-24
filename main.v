@@ -14,8 +14,8 @@ fn main() {
 	fp.skip_executable()
 	
 	file_path := fp.string('file_path', `f`, '', 'the path of the file you want to reduce')
-	if file_path == '' {
-		eprintln('You need to specify a file to reduce (with the `-f` flag) (more information with `-h` or `--help`)')
+	if file_path == '' || !os.exists(file_path) {
+		eprintln('You need to specify a valid file to reduce (with the `-f` flag) (more information with `-h` or `--help`)')
 		exit(1)
 	}
 	error_msg := fp.string('error_msg', `e`, default_error_msg, 'the error message you want to reproduce, default: ${default_error_msg}')
