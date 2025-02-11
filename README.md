@@ -1,4 +1,4 @@
-## Vreduce
+## Vreduce (outdated, use `v reduce` instead)
 
 Takes a file, a command and a pattern to reproduce and tries to make the minimal reproductible example out of it. I use it (with default command/pattern) to make MREs for C errors and then report them in V's issues.
 
